@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, validator, HttpUrl
 from typing import Optional, Dict, Any, List
 from enum import Enum
+from datetime import datetime
 from .providers import ProviderType
 
 class SummaryRequest(BaseModel):
@@ -58,3 +59,28 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class QueryRecord(BaseModel):
+    id: int
+    user_id: int
+    url: str
+    provider_type: str
+    summary_length: int
+    valid: bool
+    processing_time: float
+    created_at: str
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "user_id": 1,
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "provider_type": "youtube",
+                "summary_length": 500,
+                "valid": True,
+                "processing_time": 5.2,
+                "created_at": "2023-05-06 12:34:56"
+            }
+        }

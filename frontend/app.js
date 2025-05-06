@@ -15,6 +15,10 @@ const summaryContent = document.getElementById('summary-content');
 const metadataDisplay = document.getElementById('metadata');
 const loginError = document.getElementById('login-error');
 const signupError = document.getElementById('signup-error');
+const refreshQueriesBtn = document.getElementById('refresh-queries-btn');
+const queriesLoading = document.getElementById('queries-loading');
+const queriesTableBody = document.getElementById('queries-table-body');
+const noQueriesMessage = document.getElementById('no-queries-message');
 
 // Auth state
 let token = localStorage.getItem('token');
@@ -26,6 +30,9 @@ function checkAuth() {
         authContainer.classList.add('d-none');
         userContainer.classList.remove('d-none');
         usernameDisplay.textContent = username;
+
+        // Load user's queries
+        fetchUserQueries();
     } else {
         authContainer.classList.remove('d-none');
         userContainer.classList.add('d-none');
@@ -162,10 +169,71 @@ async function summarize(url, maxLength = 1000) {
             `;
             metadataDisplay.innerHTML = metadataHtml;
         }
+
+        // Refresh the queries list to show the new query
+        fetchUserQueries();
     } catch (error) {
         summaryContent.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
     } finally {
         loadingIndicator.classList.add('d-none');
+    }
+}
+
+async function fetchUserQueries() {
+    if (!token) return;
+
+    try {
+        queriesLoading.classList.remove('d-none');
+        queriesTableBody.innerHTML = '';
+        noQueriesMessage.classList.add('d-none');
+
+        const response = await fetch(`${API_URL}/queries/me?limit=10`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch queries');
+        }
+
+        const queries = await response.json();
+
+        if (queries.length === 0) {
+            noQueriesMessage.classList.remove('d-none');
+            return;
+        }
+
+        // Populate the table with queries
+        queries.forEach(query => {
+            const row = document.createElement('tr');
+
+            // Format the date
+            const date = new Date(query.created_at.replace(' ', 'T'));
+            const formattedDate = date.toLocaleString();
+
+            // Truncate URL if too long
+            const displayUrl = query.url.length > 40 ?
+                query.url.substring(0, 37) + '...' :
+                query.url;
+
+            row.innerHTML = `
+                <td>${formattedDate}</td>
+                <td><a href="${query.url}" target="_blank" title="${query.url}">${displayUrl}</a></td>
+                <td>${query.provider_type}</td>
+                <td>${query.summary_length}</td>
+                <td><span class="${query.valid ? 'text-success' : 'text-warning'}">${query.valid ? 'Yes' : 'No'}</span></td>
+                <td>${query.processing_time.toFixed(2)}</td>
+            `;
+
+            queriesTableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error fetching queries:', error);
+        queriesTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading queries: ${error.message}</td></tr>`;
+    } finally {
+        queriesLoading.classList.add('d-none');
     }
 }
 
@@ -198,6 +266,11 @@ summarizeForm.addEventListener('submit', (e) => {
     const url = document.getElementById('youtube-url').value;
     const maxLength = parseInt(document.getElementById('max-length').value);
     summarize(url, maxLength);
+});
+
+// Add event listener for refresh queries button
+refreshQueriesBtn.addEventListener('click', () => {
+    fetchUserQueries();
 });
 
 // Initialize
