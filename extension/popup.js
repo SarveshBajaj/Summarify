@@ -16,6 +16,7 @@ let loginError;
 let signupError;
 let loginTab;
 let signupTab;
+let copySummaryBtn;
 
 // Initialize everything when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   signupError = document.getElementById('signup-error');
   loginTab = document.getElementById('login-tab');
   signupTab = document.getElementById('signup-tab');
+  copySummaryBtn = document.getElementById('copy-summary-btn');
 
   // Initialize Bootstrap tabs manually
   loginTab.addEventListener('click', (e) => {
@@ -192,6 +194,32 @@ function setupFormListeners() {
       const maxLength = parseInt(document.getElementById('max-length').value);
       summarizeVideo(currentUrl, maxLength);
     });
+  });
+
+  // Handle copy summary button
+  copySummaryBtn.addEventListener('click', () => {
+    const summaryText = summaryContent.textContent;
+    if (summaryText) {
+      navigator.clipboard.writeText(summaryText)
+        .then(() => {
+          // Change button text temporarily to show success
+          const originalText = copySummaryBtn.textContent;
+          copySummaryBtn.textContent = 'Copied!';
+          copySummaryBtn.classList.remove('btn-outline-primary');
+          copySummaryBtn.classList.add('btn-success');
+
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            copySummaryBtn.textContent = originalText;
+            copySummaryBtn.classList.remove('btn-success');
+            copySummaryBtn.classList.add('btn-outline-primary');
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+          alert('Failed to copy summary to clipboard');
+        });
+    }
   });
 
   console.log('All form listeners set up');
