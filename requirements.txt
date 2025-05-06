@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+httpx
+youtube-transcript-api
+transformers
+torch
+python-jose[cryptography]
+passlib[bcrypt]
+slowapi
+pydantic
+pytest
+pytest-asyncio
+loguru
