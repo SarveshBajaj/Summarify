@@ -8,6 +8,7 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
 - Embedded SQLite database for user credentials and query history
 - Rate-limited API (5 requests/sec per user)
 - Summarizes YouTube videos via URL
+- Chrome/Edge browser extension for easy access
 - Extensible architecture for different content sources
 - Validation of generated summaries
 - Query history tracking and statistics
@@ -61,6 +62,30 @@ The frontend is a simple HTML/CSS/JavaScript application located in the `fronten
    ```
 
 2. Access the frontend at http://localhost:8080
+
+### Chrome Extension
+
+The Chrome/Edge extension allows you to summarize YouTube videos directly from your browser.
+
+1. Load the extension in developer mode:
+   ```sh
+   # Open Chrome/Edge and navigate to:
+   # Chrome: chrome://extensions/
+   # Edge: edge://extensions/
+   # Then enable "Developer mode" and click "Load unpacked"
+   # Select the "extension" directory in the project
+   ```
+
+2. Use the extension:
+   - Click the Summarify icon in your browser toolbar
+   - Log in with your Summarify account
+   - Navigate to a YouTube video and click "Summarize Current Video"
+   - Or enter a YouTube URL manually
+   - Or right-click on a YouTube page and select "Summarize this YouTube video"
+
+3. View the generated summary directly in the extension popup
+
+For more details, see the [extension README](extension/README.md).
 
 ## API Endpoints
 
@@ -133,6 +158,14 @@ tests/
 │   └── schemas.py        # Pydantic models
 ├── data/                 # Database files
 │   └── summarify.db      # SQLite database
+├── extension/            # Chrome/Edge extension
+│   ├── manifest.json     # Extension configuration
+│   ├── popup.html        # Extension popup UI
+│   ├── popup.js          # Popup functionality
+│   ├── popup.css         # Popup styles
+│   ├── background.js     # Background script for API calls
+│   ├── content.js        # Content script for YouTube integration
+│   └── icons/            # Extension icons
 ├── frontend/            # Frontend application
 │   ├── index.html        # Main HTML page
 │   ├── styles.css        # CSS styles
@@ -140,6 +173,7 @@ tests/
 ├── logs/                # Application logs
 ├── tests/               # Test suite
 │   ├── conftest.py       # Shared test fixtures
+│   ├── extension/        # Extension tests
 │   ├── integration/      # Integration tests
 │   └── unit/             # Unit tests
 ├── venv/                # Virtual environment
