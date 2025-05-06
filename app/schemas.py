@@ -3,11 +3,14 @@ from typing import Optional, Dict, Any, List
 from enum import Enum
 from datetime import datetime
 from .providers import ProviderType
+from .models import ModelType
 
 class SummaryRequest(BaseModel):
     url: str = Field(..., description="URL of the content to summarize")
     max_length: Optional[int] = Field(1000, description="Target maximum length of summary in words")
     provider_type: Optional[ProviderType] = Field(ProviderType.youtube, description="Type of content provider")
+    model_type: Optional[ModelType] = Field(ModelType.huggingface, description="Type of summarization model")
+    model_name: Optional[str] = Field(None, description="Specific model name (if applicable)")
 
     @validator('max_length')
     def validate_max_length(cls, v):
@@ -25,7 +28,12 @@ class SummaryResponse(BaseModel):
             "example": {
                 "summary": "This is a summary of the video content...",
                 "valid": True,
-                "metadata": {"word_count": 250, "source_type": "youtube"}
+                "metadata": {
+                    "word_count": 250,
+                    "source_type": "youtube",
+                    "model_type": "huggingface",
+                    "model_name": "facebook/bart-large-cnn"
+                }
             }
         }
 
@@ -65,6 +73,8 @@ class QueryRecord(BaseModel):
     user_id: int
     url: str
     provider_type: str
+    model_type: Optional[str] = None
+    model_name: Optional[str] = None
     summary_length: int
     valid: bool
     processing_time: float
@@ -78,9 +88,22 @@ class QueryRecord(BaseModel):
                 "user_id": 1,
                 "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
                 "provider_type": "youtube",
+                "model_type": "huggingface",
+                "model_name": "facebook/bart-large-cnn",
                 "summary_length": 500,
                 "valid": True,
                 "processing_time": 5.2,
                 "created_at": "2023-05-06 12:34:56"
             }
         }
+
+class APIKeyRequest(BaseModel):
+    provider: str = Field(..., description="Provider name (e.g., openai, anthropic)")
+    api_key: str = Field(..., description="API key for the provider")
+
+    @validator('provider')
+    def validate_provider(cls, v):
+        allowed_providers = ['openai', 'anthropic']
+        if v not in allowed_providers:
+            raise ValueError(f'Provider must be one of: {allowed_providers}')
+        return v
