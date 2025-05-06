@@ -1,22 +1,68 @@
-// DOM Elements
-const authContainer = document.getElementById('auth-container');
-const userContainer = document.getElementById('user-container');
-const usernameDisplay = document.getElementById('username-display');
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-const logoutBtn = document.getElementById('logout-btn');
-const summarizeForm = document.getElementById('summarize-form');
-const resultContainer = document.getElementById('result-container');
-const loadingIndicator = document.getElementById('loading');
-const summaryContent = document.getElementById('summary-content');
-const metadataDisplay = document.getElementById('metadata');
-const currentVideoContainer = document.getElementById('current-video-container');
-const summarizeCurrentBtn = document.getElementById('summarize-current-btn');
-const loginError = document.getElementById('login-error');
-const signupError = document.getElementById('signup-error');
+// DOM Elements - We'll initialize these after the DOM is fully loaded
+let authContainer;
+let userContainer;
+let usernameDisplay;
+let loginForm;
+let signupForm;
+let logoutBtn;
+let summarizeForm;
+let resultContainer;
+let loadingIndicator;
+let summaryContent;
+let metadataDisplay;
+let currentVideoContainer;
+let summarizeCurrentBtn;
+let loginError;
+let signupError;
+let loginTab;
+let signupTab;
+let copySummaryBtn;
 
-// Check if user is logged in when popup opens
+// Initialize everything when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM fully loaded');
+
+  // Initialize all DOM elements
+  authContainer = document.getElementById('auth-container');
+  userContainer = document.getElementById('user-container');
+  usernameDisplay = document.getElementById('username-display');
+  loginForm = document.getElementById('login-form');
+  signupForm = document.getElementById('signup-form');
+  logoutBtn = document.getElementById('logout-btn');
+  summarizeForm = document.getElementById('summarize-form');
+  resultContainer = document.getElementById('result-container');
+  loadingIndicator = document.getElementById('loading');
+  summaryContent = document.getElementById('summary-content');
+  metadataDisplay = document.getElementById('metadata');
+  currentVideoContainer = document.getElementById('current-video-container');
+  summarizeCurrentBtn = document.getElementById('summarize-current-btn');
+  loginError = document.getElementById('login-error');
+  signupError = document.getElementById('signup-error');
+  loginTab = document.getElementById('login-tab');
+  signupTab = document.getElementById('signup-tab');
+  copySummaryBtn = document.getElementById('copy-summary-btn');
+
+  // Initialize Bootstrap tabs manually
+  loginTab.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelector('#login').classList.add('show', 'active');
+    document.querySelector('#signup').classList.remove('show', 'active');
+    loginTab.classList.add('active');
+    signupTab.classList.remove('active');
+  });
+
+  signupTab.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelector('#login').classList.remove('show', 'active');
+    document.querySelector('#signup').classList.add('show', 'active');
+    loginTab.classList.remove('active');
+    signupTab.classList.add('active');
+  });
+
+  // Set up form event listeners
+  setupFormListeners();
+
+  // Check if user is logged in
   chrome.storage.local.get(['token', 'username'], (result) => {
     if (result.token && result.username) {
       authContainer.classList.add('d-none');
@@ -45,101 +91,139 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Event listeners
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const username = document.getElementById('login-username').value;
-  const password = document.getElementById('login-password').value;
+// Set up all form event listeners
+function setupFormListeners() {
+  console.log('Setting up form listeners');
 
-  loginError.classList.add('d-none');
+  // Login form submission
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    console.log('Login form submitted');
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
 
-  chrome.runtime.sendMessage(
-    { action: 'login', username, password },
-    (response) => {
-      if (response.error) {
-        loginError.textContent = response.error;
-        loginError.classList.remove('d-none');
-      } else {
-        // Refresh UI
-        authContainer.classList.add('d-none');
-        userContainer.classList.remove('d-none');
-        usernameDisplay.textContent = username;
+    loginError.classList.add('d-none');
 
-        // Check if current tab is YouTube
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const currentUrl = tabs[0].url;
-          if (currentUrl && currentUrl.includes('youtube.com/watch')) {
-            currentVideoContainer.classList.remove('d-none');
-            document.getElementById('youtube-url').value = currentUrl;
-          }
-        });
+    chrome.runtime.sendMessage(
+      { action: 'login', username, password },
+      (response) => {
+        if (response.error) {
+          loginError.textContent = response.error;
+          loginError.classList.remove('d-none');
+        } else {
+          // Refresh UI
+          authContainer.classList.add('d-none');
+          userContainer.classList.remove('d-none');
+          usernameDisplay.textContent = username;
+
+          // Check if current tab is YouTube
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const currentUrl = tabs[0].url;
+            if (currentUrl && currentUrl.includes('youtube.com/watch')) {
+              currentVideoContainer.classList.remove('d-none');
+              document.getElementById('youtube-url').value = currentUrl;
+            }
+          });
+        }
       }
-    }
-  );
-});
-
-signupForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const username = document.getElementById('signup-username').value;
-  const password = document.getElementById('signup-password').value;
-  const email = document.getElementById('signup-email').value;
-
-  signupError.classList.add('d-none');
-
-  chrome.runtime.sendMessage(
-    { action: 'signup', username, password, email },
-    (response) => {
-      if (response.error) {
-        signupError.textContent = response.error;
-        signupError.classList.remove('d-none');
-      } else {
-        // Show success message and switch to login tab
-        signupError.textContent = 'Account created successfully! Please log in.';
-        signupError.classList.remove('d-none');
-        signupError.classList.remove('alert-danger');
-        signupError.classList.add('alert-success');
-
-        // Clear form
-        document.getElementById('signup-username').value = '';
-        document.getElementById('signup-password').value = '';
-        document.getElementById('signup-email').value = '';
-
-        // Switch to login tab
-        document.getElementById('login-tab').click();
-      }
-    }
-  );
-});
-
-logoutBtn.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ action: 'logout' }, () => {
-    authContainer.classList.remove('d-none');
-    userContainer.classList.add('d-none');
-    resultContainer.classList.add('d-none');
+    );
   });
-});
 
-summarizeForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const url = document.getElementById('youtube-url').value;
-  const maxLength = parseInt(document.getElementById('max-length').value);
+  // Signup form submission
+  signupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    console.log('Signup form submitted');
+    const username = document.getElementById('signup-username').value;
+    const password = document.getElementById('signup-password').value;
+    const email = document.getElementById('signup-email').value;
 
-  if (!url) {
-    alert('Please enter a YouTube URL');
-    return;
-  }
+    signupError.classList.add('d-none');
 
-  summarizeVideo(url, maxLength);
-});
+    chrome.runtime.sendMessage(
+      { action: 'signup', username, password, email },
+      (response) => {
+        if (response.error) {
+          signupError.textContent = response.error;
+          signupError.classList.remove('d-none');
+        } else {
+          // Show success message and switch to login tab
+          signupError.textContent = 'Account created successfully! Please log in.';
+          signupError.classList.remove('d-none');
+          signupError.classList.remove('alert-danger');
+          signupError.classList.add('alert-success');
 
-// Handle summarize current video button
-summarizeCurrentBtn.addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentUrl = tabs[0].url;
+          // Clear form
+          document.getElementById('signup-username').value = '';
+          document.getElementById('signup-password').value = '';
+          document.getElementById('signup-email').value = '';
+
+          // Switch to login tab
+          loginTab.click();
+        }
+      }
+    );
+  });
+
+  // Logout button
+  logoutBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'logout' }, () => {
+      authContainer.classList.remove('d-none');
+      userContainer.classList.add('d-none');
+      resultContainer.classList.add('d-none');
+    });
+  });
+
+  // Summarize form
+  summarizeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const url = document.getElementById('youtube-url').value;
     const maxLength = parseInt(document.getElementById('max-length').value);
-    summarizeVideo(currentUrl, maxLength);
+
+    if (!url) {
+      alert('Please enter a YouTube URL');
+      return;
+    }
+
+    summarizeVideo(url, maxLength);
   });
-});
+
+  // Handle summarize current video button
+  summarizeCurrentBtn.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentUrl = tabs[0].url;
+      const maxLength = parseInt(document.getElementById('max-length').value);
+      summarizeVideo(currentUrl, maxLength);
+    });
+  });
+
+  // Handle copy summary button
+  copySummaryBtn.addEventListener('click', () => {
+    const summaryText = summaryContent.textContent;
+    if (summaryText) {
+      navigator.clipboard.writeText(summaryText)
+        .then(() => {
+          // Change button text temporarily to show success
+          const originalText = copySummaryBtn.textContent;
+          copySummaryBtn.textContent = 'Copied!';
+          copySummaryBtn.classList.remove('btn-outline-primary');
+          copySummaryBtn.classList.add('btn-success');
+
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            copySummaryBtn.textContent = originalText;
+            copySummaryBtn.classList.remove('btn-success');
+            copySummaryBtn.classList.add('btn-outline-primary');
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+          alert('Failed to copy summary to clipboard');
+        });
+    }
+  });
+
+  console.log('All form listeners set up');
+}
 
 // Function to summarize video
 function summarizeVideo(url, maxLength) {
