@@ -9,6 +9,10 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
 - Rate-limited API (5 requests/sec per user)
 - Summarizes YouTube videos via URL
 - Chrome/Edge browser extension for easy access
+- Multiple summarization models:
+  - Local HuggingFace models (default)
+  - OpenAI API integration (GPT-3.5/4)
+  - Anthropic Claude API integration
 - Extensible architecture for different content sources
 - Validation of generated summaries
 - Query history tracking and statistics
@@ -20,6 +24,8 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
 - Python 3.8+
 - Node.js 14+ (for frontend development)
 - Internet connection (for YouTube API access)
+- OpenAI API key (optional, for using OpenAI models)
+- Anthropic API key (optional, for using Claude models)
 
 ## Setup
 
@@ -63,6 +69,44 @@ The frontend is a simple HTML/CSS/JavaScript application located in the `fronten
 
 2. Access the frontend at http://localhost:8080
 
+### Configuring External AI Models
+
+By default, Summarify uses a local HuggingFace model for summarization. You can also configure it to use OpenAI or Anthropic Claude models:
+
+1. Set API keys using the API endpoint:
+   ```sh
+   # For OpenAI
+   curl -X POST http://localhost:8000/api-keys \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"provider": "openai", "api_key": "YOUR_OPENAI_API_KEY"}'
+
+   # For Anthropic Claude
+   curl -X POST http://localhost:8000/api-keys \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"provider": "anthropic", "api_key": "YOUR_ANTHROPIC_API_KEY"}'
+   ```
+
+2. Alternatively, you can set environment variables:
+   ```sh
+   # For OpenAI
+   export OPENAI_API_KEY=your_openai_api_key
+
+   # For Anthropic Claude
+   export ANTHROPIC_API_KEY=your_anthropic_api_key
+   ```
+
+3. Or create a `config.json` file in the project root:
+   ```json
+   {
+     "api_keys": {
+       "openai": "your_openai_api_key",
+       "anthropic": "your_anthropic_api_key"
+     }
+   }
+   ```
+
 ### Chrome Extension
 
 The Chrome/Edge extension allows you to summarize YouTube videos directly from your browser.
@@ -96,10 +140,23 @@ For more details, see the [extension README](extension/README.md).
 
 ### Summarization
 - `POST /summarize` - Summarize content from a URL
+  - Parameters:
+    - `url`: URL of the content to summarize
+    - `max_length`: Maximum length of the summary in words (default: 1000)
+    - `provider_type`: Type of content provider (default: "youtube")
+    - `model_type`: Type of summarization model ("huggingface", "openai", or "claude")
+    - `model_name`: Specific model name (optional)
 
 ### Query History
 - `GET /queries/me` - Get the current user's query history
 - `GET /queries/stats` - Get overall query statistics
+
+### Model Management
+- `GET /models` - Get available models and their configuration status
+- `POST /api-keys` - Set API key for a provider
+  - Parameters:
+    - `provider`: Provider name ("openai" or "anthropic")
+    - `api_key`: API key for the provider
 
 ## Testing
 

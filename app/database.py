@@ -24,10 +24,10 @@ def get_db_connection():
 def init_db():
     """Initialize the database with required tables"""
     logger.info(f"Initializing database at {DB_PATH}")
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Create users table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
@@ -40,7 +40,7 @@ def init_db():
         last_login TIMESTAMP
     )
     ''')
-    
+
     # Create queries table to track user summarization requests
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS queries (
@@ -48,6 +48,8 @@ def init_db():
         user_id INTEGER NOT NULL,
         url TEXT NOT NULL,
         provider_type TEXT NOT NULL,
+        model_type TEXT DEFAULT 'huggingface',
+        model_name TEXT,
         summary_length INTEGER,
         valid BOOLEAN,
         processing_time REAL,
@@ -55,10 +57,10 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
-    
+
     conn.commit()
     conn.close()
-    
+
     logger.info("Database initialized successfully")
 
 # User management functions
@@ -67,21 +69,21 @@ def create_user(username: str, password: str, email: Optional[str] = None) -> Op
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Hash the password
         hashed_password = pwd_context.hash(password)
-        
+
         cursor.execute(
             "INSERT INTO users (username, email, hashed_password) VALUES (?, ?, ?)",
             (username, email, hashed_password)
         )
-        
+
         user_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         logger.info(f"User created: {username} (ID: {user_id})")
-        
+
         return {
             "id": user_id,
             "username": username,
@@ -100,12 +102,12 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
-        
+
         conn.close()
-        
+
         if user:
             return dict(user)
         return None
@@ -120,30 +122,30 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate a user and update last login time"""
     user = get_user(username)
-    
+
     if not user:
         logger.warning(f"Authentication failed: User not found - {username}")
         return None
-        
+
     if not verify_password(password, user["hashed_password"]):
         logger.warning(f"Authentication failed: Invalid password - {username}")
         return None
-    
+
     # Update last login time
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute(
             "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?",
             (user["id"],)
         )
-        
+
         conn.commit()
         conn.close()
     except Exception as e:
         logger.error(f"Error updating last login: {str(e)}")
-    
+
     logger.info(f"User authenticated: {username}")
     return user
 
@@ -154,26 +156,28 @@ def log_query(
     provider_type: str,
     summary_length: int,
     valid: bool,
-    processing_time: float
+    processing_time: float,
+    model_type: str = "huggingface",
+    model_name: Optional[str] = None
 ) -> int:
     """Log a summarization query"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute(
             """
-            INSERT INTO queries 
-            (user_id, url, provider_type, summary_length, valid, processing_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO queries
+            (user_id, url, provider_type, model_type, model_name, summary_length, valid, processing_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, url, provider_type, summary_length, valid, processing_time)
+            (user_id, url, provider_type, model_type, model_name, summary_length, valid, processing_time)
         )
-        
+
         query_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Query logged: ID {query_id} for user {user_id}")
         return query_id
     except Exception as e:
@@ -185,7 +189,7 @@ def get_user_queries(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute(
             """
             SELECT * FROM queries
@@ -195,10 +199,10 @@ def get_user_queries(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
             """,
             (user_id, limit)
         )
-        
+
         queries = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        
+
         return queries
     except Exception as e:
         logger.error(f"Error getting user queries: {str(e)}")
@@ -209,37 +213,37 @@ def get_query_stats() -> Dict[str, Any]:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Total queries
         cursor.execute("SELECT COUNT(*) as count FROM queries")
         total_count = cursor.fetchone()["count"]
-        
+
         # Queries by provider type
         cursor.execute(
             """
-            SELECT provider_type, COUNT(*) as count 
-            FROM queries 
+            SELECT provider_type, COUNT(*) as count
+            FROM queries
             GROUP BY provider_type
             """
         )
         provider_counts = {row["provider_type"]: row["count"] for row in cursor.fetchall()}
-        
+
         # Valid vs invalid summaries
         cursor.execute(
             """
-            SELECT valid, COUNT(*) as count 
-            FROM queries 
+            SELECT valid, COUNT(*) as count
+            FROM queries
             GROUP BY valid
             """
         )
         valid_counts = {str(row["valid"]): row["count"] for row in cursor.fetchall()}
-        
+
         # Average processing time
         cursor.execute("SELECT AVG(processing_time) as avg_time FROM queries")
         avg_time = cursor.fetchone()["avg_time"]
-        
+
         conn.close()
-        
+
         return {
             "total_queries": total_count,
             "by_provider": provider_counts,

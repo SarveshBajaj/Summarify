@@ -1,0 +1,17 @@
+{
+    "api_keys": {
+        "openai": "test-key",
+        "anthropic": ""
+    },
+    "models": {
+        "huggingface": {
+            "default": "facebook/bart-large-cnn"
+        },
+        "openai": {
+            "default": "gpt-3.5-turbo"
+        },
+        "claude": {
+            "default": "claude-3-haiku-20240307"
+        }
+    }
+}
