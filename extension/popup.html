@@ -6,22 +6,87 @@
   <title>Summarify</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
+  <!-- Add debugging console -->
+  <script>
+    // Redirect console logs to a visible element for debugging
+    const originalConsoleLog = console.log;
+    console.log = function() {
+      // Call the original console.log
+      originalConsoleLog.apply(console, arguments);
+
+      // Create debug element if it doesn't exist
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!document.getElementById('debug-console')) {
+          const debugConsole = document.createElement('div');
+          debugConsole.id = 'debug-console';
+          debugConsole.style.display = 'none'; // Hidden by default
+          debugConsole.style.position = 'fixed';
+          debugConsole.style.bottom = '0';
+          debugConsole.style.left = '0';
+          debugConsole.style.right = '0';
+          debugConsole.style.maxHeight = '100px';
+          debugConsole.style.overflow = 'auto';
+          debugConsole.style.backgroundColor = 'black';
+          debugConsole.style.color = 'white';
+          debugConsole.style.padding = '5px';
+          debugConsole.style.fontSize = '10px';
+          debugConsole.style.zIndex = '9999';
+          document.body.appendChild(debugConsole);
+
+          // Add toggle button
+          const toggleButton = document.createElement('button');
+          toggleButton.textContent = 'Debug';
+          toggleButton.style.position = 'fixed';
+          toggleButton.style.bottom = '0';
+          toggleButton.style.right = '0';
+          toggleButton.style.zIndex = '10000';
+          toggleButton.style.fontSize = '10px';
+          toggleButton.style.padding = '2px 5px';
+          toggleButton.addEventListener('click', () => {
+            const console = document.getElementById('debug-console');
+            console.style.display = console.style.display === 'none' ? 'block' : 'none';
+          });
+          document.body.appendChild(toggleButton);
+        }
+      });
+
+      // Log to our debug console
+      const args = Array.from(arguments);
+      const message = args.map(arg => {
+        if (typeof arg === 'object') {
+          return JSON.stringify(arg);
+        } else {
+          return String(arg);
+        }
+      }).join(' ');
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const debugConsole = document.getElementById('debug-console');
+        if (debugConsole) {
+          const logLine = document.createElement('div');
+          logLine.textContent = message;
+          debugConsole.appendChild(logLine);
+          debugConsole.scrollTop = debugConsole.scrollHeight;
+        }
+      });
+    };
+  </script>
 </head>
 <body>
   <div class="container">
     <header class="py-2 mb-2">
       <h4 class="text-center">Summarify</h4>
     </header>
-    
+
     <div id="auth-container">
       <div class="card">
         <div class="card-body">
           <ul class="nav nav-tabs" id="auth-tabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Login</button>
+              <button class="nav-link active" id="login-tab" type="button">Login</button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" type="button" role="tab">Sign Up</button>
+              <button class="nav-link" id="signup-tab" type="button">Sign Up</button>
             </li>
           </ul>
           <div class="tab-content pt-3" id="auth-tab-content">
@@ -61,19 +126,19 @@
         </div>
       </div>
     </div>
-    
+
     <div id="user-container" class="d-none">
       <div class="mb-2">
         <small>Logged in as <span id="username-display"></span></small>
         <button id="logout-btn" class="btn btn-sm btn-outline-secondary float-end">Logout</button>
       </div>
-      
+
       <div class="card mb-2">
         <div class="card-body">
           <div id="current-video-container" class="d-none mb-2">
             <button id="summarize-current-btn" class="btn btn-primary w-100">Summarize Current Video</button>
           </div>
-          
+
           <form id="summarize-form">
             <div class="mb-2">
               <label for="youtube-url" class="form-label">YouTube URL</label>
@@ -87,7 +152,7 @@
           </form>
         </div>
       </div>
-      
+
       <div id="result-container" class="d-none">
         <div class="card">
           <div class="card-body">
@@ -104,7 +169,7 @@
       </div>
     </div>
   </div>
-  
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script src="popup.js"></script>
 </body>
