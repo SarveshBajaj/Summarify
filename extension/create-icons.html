@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Icons</title>
+</head>
+<body>
+  <canvas id="icon16" width="16" height="16"></canvas>
+  <canvas id="icon48" width="48" height="48"></canvas>
+  <canvas id="icon128" width="128" height="128"></canvas>
+  
+  <script>
+    // Function to draw a simple "S" icon
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = '#4285F4'; // Google blue
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw "S"
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${Math.floor(size * 0.7)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('S', size/2, size/2);
+      
+      // Convert to data URL
+      return canvas.toDataURL('image/png');
+    }
+    
+    // Draw icons
+    const icon16 = drawIcon(document.getElementById('icon16'), 16);
+    const icon48 = drawIcon(document.getElementById('icon48'), 48);
+    const icon128 = drawIcon(document.getElementById('icon128'), 128);
+    
+    // Log data URLs to console
+    console.log('Icon 16x16:', icon16);
+    console.log('Icon 48x48:', icon48);
+    console.log('Icon 128x128:', icon128);
+  </script>
+</body>
+</html>

@@ -29,10 +29,10 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS for frontend
+# CORS for frontend and Chrome extension
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the actual origins
+    allow_origins=["*", "chrome-extension://*"],  # Allow requests from any origin and Chrome extensions
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
