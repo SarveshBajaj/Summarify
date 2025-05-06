@@ -4,14 +4,16 @@
 Summarify is an extensible API and UI for summarizing YouTube videos (and later, other sources) using transcripts and a local LLM. The application provides a rate-limited API with user authentication and a simple frontend interface.
 
 ## Features
-- User authentication (sign up/login)
+- User authentication (sign up/login) with secure password hashing
+- Embedded SQLite database for user credentials and query history
 - Rate-limited API (5 requests/sec per user)
 - Summarizes YouTube videos via URL
 - Extensible architecture for different content sources
 - Validation of generated summaries
+- Query history tracking and statistics
 - Comprehensive logging
-- Test coverage
-- Simple frontend UI
+- Extensive test coverage (unit and integration tests)
+- Simple frontend UI with query history display
 
 ## Requirements
 - Python 3.8+
@@ -62,23 +64,61 @@ The frontend is a simple HTML/CSS/JavaScript application located in the `fronten
 
 ## API Endpoints
 
+### Authentication
 - `POST /signup` - Register a new user
 - `POST /login` - Authenticate and get access token
 - `GET /users/me` - Get current user information
+
+### Summarization
 - `POST /summarize` - Summarize content from a URL
+
+### Query History
+- `GET /queries/me` - Get the current user's query history
+- `GET /queries/stats` - Get overall query statistics
 
 ## Testing
 
-Run the test suite with pytest:
+The project includes comprehensive test coverage with both unit and integration tests.
+
+### Running Tests
+
+Run the entire test suite with pytest:
 
 ```sh
-pytest
+python -m pytest
 ```
 
-For more detailed test output:
+Run specific test categories:
 
 ```sh
-pytest -v
+# Run only unit tests
+python -m pytest tests/unit
+
+# Run only integration tests
+python -m pytest tests/integration
+
+# Run with verbose output
+python -m pytest -v
+
+# Run a specific test file
+python -m pytest tests/unit/test_database.py
+```
+
+### Test Structure
+
+Tests are organized into the following structure:
+
+```
+tests/
+├── conftest.py         # Shared test fixtures
+├── __init__.py
+├── integration/        # API and end-to-end tests
+│   ├── __init__.py
+│   ├── test_api.py     # Tests for API endpoints with database
+│   └── test_main.py    # Tests for main application functionality
+└── unit/               # Unit tests for individual components
+    ├── __init__.py
+    └── test_database.py # Tests for database functionality
 ```
 
 ## Project Structure
@@ -88,15 +128,22 @@ pytest -v
 │   ├── __init__.py
 │   ├── main.py           # FastAPI application and routes
 │   ├── auth.py           # Authentication logic
+│   ├── database.py       # Database operations and models
 │   ├── providers.py      # Content providers (YouTube, etc.)
-│   ├── schemas.py        # Pydantic models
-│   └── test_main.py      # Tests
+│   └── schemas.py        # Pydantic models
+├── data/                 # Database files
+│   └── summarify.db      # SQLite database
 ├── frontend/            # Frontend application
 │   ├── index.html        # Main HTML page
 │   ├── styles.css        # CSS styles
 │   └── app.js            # JavaScript for the frontend
 ├── logs/                # Application logs
+├── tests/               # Test suite
+│   ├── conftest.py       # Shared test fixtures
+│   ├── integration/      # Integration tests
+│   └── unit/             # Unit tests
 ├── venv/                # Virtual environment
+├── pytest.ini           # Pytest configuration
 ├── requirements.txt     # Python dependencies
 └── README.md            # This file
 ```
