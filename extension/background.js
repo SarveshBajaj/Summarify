@@ -3,17 +3,33 @@ const API_URL = 'http://localhost:8080';
 
 // Handle authentication and API requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Background received message:', request.action);
+
   if (request.action === 'login') {
+    console.log('Background processing login request');
     login(request.username, request.password)
-      .then(response => sendResponse(response))
-      .catch(error => sendResponse({ error: error.message }));
+      .then(response => {
+        console.log('Login response:', response);
+        sendResponse(response);
+      })
+      .catch(error => {
+        console.error('Login error:', error);
+        sendResponse({ error: error.message });
+      });
     return true; // Required for async response
   }
 
   if (request.action === 'signup') {
+    console.log('Background processing signup request');
     signup(request.username, request.password, request.email)
-      .then(response => sendResponse(response))
-      .catch(error => sendResponse({ error: error.message }));
+      .then(response => {
+        console.log('Signup response:', response);
+        sendResponse(response);
+      })
+      .catch(error => {
+        console.error('Signup error:', error);
+        sendResponse({ error: error.message });
+      });
     return true;
   }
 
@@ -42,6 +58,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     setApiKey(request.provider, request.apiKey)
       .then(response => sendResponse(response))
       .catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'test') {
+    console.log('Background received test message:', request.message);
+    sendResponse({ success: true, message: 'Test response from background script' });
     return true;
   }
 
@@ -82,7 +104,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // API functions
 async function login(username, password) {
+  console.log(`Login attempt for user: ${username}`);
   try {
+    console.log(`Sending login request to ${API_URL}/login`);
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -92,19 +116,23 @@ async function login(username, password) {
       })
     });
 
+    console.log('Login response status:', response.status);
     const data = await response.json();
+    console.log('Login response data:', data);
 
     if (!response.ok) {
+      console.error('Login failed:', data.detail);
       throw new Error(data.detail || 'Login failed');
     }
 
     // Store token in Chrome storage
+    console.log('Storing token in Chrome storage');
     chrome.storage.local.set({
       token: data.access_token,
       username: username
     });
 
-    return { success: true };
+    return { success: true, access_token: data.access_token, username: username };
   } catch (error) {
     console.error('Login error:', error);
     throw error;
@@ -112,7 +140,9 @@ async function login(username, password) {
 }
 
 async function signup(username, password, email) {
+  console.log(`Signup attempt for user: ${username}`);
   try {
+    console.log(`Sending signup request to ${API_URL}/signup`);
     const response = await fetch(`${API_URL}/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -123,13 +153,16 @@ async function signup(username, password, email) {
       })
     });
 
+    console.log('Signup response status:', response.status);
     const data = await response.json();
+    console.log('Signup response data:', data);
 
     if (!response.ok) {
+      console.error('Signup failed:', data.detail);
       throw new Error(data.detail || 'Signup failed');
     }
 
-    return { success: true };
+    return { success: true, access_token: data.access_token, username: username };
   } catch (error) {
     console.error('Signup error:', error);
     throw error;

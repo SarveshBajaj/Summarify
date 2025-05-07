@@ -19,7 +19,7 @@
         if (!document.getElementById('debug-console')) {
           const debugConsole = document.createElement('div');
           debugConsole.id = 'debug-console';
-          debugConsole.style.display = 'none'; // Hidden by default
+          debugConsole.style.display = 'block'; // Show by default for debugging
           debugConsole.style.position = 'fixed';
           debugConsole.style.bottom = '0';
           debugConsole.style.left = '0';
@@ -74,8 +74,9 @@
 </head>
 <body>
   <div class="container">
-    <header class="py-2 mb-2">
-      <h4 class="text-center">Summarify</h4>
+    <header class="py-2 mb-2 d-flex justify-content-between align-items-center">
+      <h4 class="text-center mb-0">Summarify</h4>
+      <button id="debug-btn" class="btn btn-sm btn-outline-secondary">Debug</button>
     </header>
 
     <div id="auth-container">
@@ -100,7 +101,7 @@
                   <label for="login-password" class="form-label">Password</label>
                   <input type="password" class="form-control" id="login-password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Login</button>
+                <button type="submit" id="login-button" class="btn btn-primary">Login</button>
                 <div class="alert alert-danger mt-2 d-none" id="login-error"></div>
               </form>
             </div>
@@ -118,7 +119,7 @@
                   <label for="signup-password" class="form-label">Password</label>
                   <input type="password" class="form-control" id="signup-password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Sign Up</button>
+                <button type="submit" id="signup-button" class="btn btn-primary">Sign Up</button>
                 <div class="alert alert-danger mt-2 d-none" id="signup-error"></div>
               </form>
             </div>

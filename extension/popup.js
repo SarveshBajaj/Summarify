@@ -212,6 +212,38 @@ function updateModelNameOptions() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded');
 
+  // Add direct click handlers to buttons for debugging
+  document.getElementById('login-button')?.addEventListener('click', function(e) {
+    console.log('Login button clicked directly');
+    alert('Login button clicked!');
+    // Don't prevent default - let the form submission happen
+  });
+
+  document.getElementById('signup-button')?.addEventListener('click', function(e) {
+    console.log('Signup button clicked directly');
+    // Don't prevent default - let the form submission happen
+  });
+
+  // Add debug button handler
+  document.getElementById('debug-btn')?.addEventListener('click', function() {
+    console.log('Debug button clicked');
+    const debugConsole = document.getElementById('debug-console');
+    if (debugConsole) {
+      debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Also show a test message in the console
+    console.log('Debug test message - Chrome runtime:', chrome.runtime);
+
+    // Try a test message to the background script
+    chrome.runtime.sendMessage(
+      { action: 'test', message: 'Test message from popup' },
+      (response) => {
+        console.log('Test message response:', response);
+      }
+    );
+  });
+
   // Initialize all DOM elements
   authContainer = document.getElementById('auth-container');
   userContainer = document.getElementById('user-container');
@@ -269,6 +301,50 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set up form event listeners
   setupFormListeners();
 
+  // Add direct form submission handlers as a backup
+  document.getElementById('login-form')?.addEventListener('submit', function(e) {
+    console.log('Login form submitted directly');
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+
+    // Show a message
+    const loginError = document.getElementById('login-error');
+    loginError.textContent = 'Direct login attempt...';
+    loginError.classList.remove('d-none');
+
+    // Send message directly
+    chrome.runtime.sendMessage(
+      { action: 'login', username, password },
+      (response) => {
+        console.log('Direct login response:', response);
+        loginError.textContent = response?.error || 'Login successful!';
+      }
+    );
+  });
+
+  document.getElementById('signup-form')?.addEventListener('submit', function(e) {
+    console.log('Signup form submitted directly');
+    e.preventDefault();
+    const username = document.getElementById('signup-username').value;
+    const password = document.getElementById('signup-password').value;
+    const email = document.getElementById('signup-email').value;
+
+    // Show a message
+    const signupError = document.getElementById('signup-error');
+    signupError.textContent = 'Direct signup attempt...';
+    signupError.classList.remove('d-none');
+
+    // Send message directly
+    chrome.runtime.sendMessage(
+      { action: 'signup', username, password, email },
+      (response) => {
+        console.log('Direct signup response:', response);
+        signupError.textContent = response?.error || 'Signup successful!';
+      }
+    );
+  });
+
   // Check if user is logged in
   chrome.storage.local.get(['token', 'username'], (result) => {
     if (result.token && result.username) {
@@ -314,29 +390,56 @@ function setupFormListeners() {
     console.log('Login form submitted');
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
+    console.log(`Attempting to login user: ${username}`);
 
     loginError.classList.add('d-none');
 
+    // Add a visible message for debugging
+    loginError.textContent = 'Sending login request...';
+    loginError.classList.remove('d-none');
+    loginError.classList.remove('alert-danger');
+    loginError.classList.add('alert-info');
+
+    console.log('Sending login message to background script');
     chrome.runtime.sendMessage(
       { action: 'login', username, password },
       (response) => {
-        if (response.error) {
-          loginError.textContent = response.error;
-          loginError.classList.remove('d-none');
-        } else {
-          // Refresh UI
-          authContainer.classList.add('d-none');
-          userContainer.classList.remove('d-none');
-          usernameDisplay.textContent = username;
+        console.log('Received login response:', response);
 
-          // Check if current tab is YouTube
-          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            const currentUrl = tabs[0].url;
-            if (currentUrl && currentUrl.includes('youtube.com/watch')) {
-              currentVideoContainer.classList.remove('d-none');
-              document.getElementById('youtube-url').value = currentUrl;
-            }
-          });
+        if (response && response.error) {
+          console.error('Login error:', response.error);
+          loginError.textContent = response.error;
+          loginError.classList.remove('alert-info');
+          loginError.classList.add('alert-danger');
+          loginError.classList.remove('d-none');
+        } else if (response && response.success) {
+          console.log('Login successful');
+          loginError.textContent = 'Login successful!';
+          loginError.classList.remove('alert-danger');
+          loginError.classList.add('alert-success');
+
+          // Refresh UI after a short delay
+          setTimeout(() => {
+            // Refresh UI
+            authContainer.classList.add('d-none');
+            userContainer.classList.remove('d-none');
+            usernameDisplay.textContent = username;
+
+            // Check if current tab is YouTube
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              const currentUrl = tabs[0].url;
+              if (currentUrl && currentUrl.includes('youtube.com/watch')) {
+                currentVideoContainer.classList.remove('d-none');
+                document.getElementById('youtube-url').value = currentUrl;
+              }
+            });
+          }, 1000);
+        } else {
+          console.error('Unexpected login response:', response);
+          loginError.textContent = 'Unexpected error. Please try again.';
+          loginError.classList.remove('alert-info');
+          loginError.classList.add('alert-danger');
+          loginError.classList.remove('d-none');
         }
       }
     );
@@ -349,19 +452,33 @@ function setupFormListeners() {
     const username = document.getElementById('signup-username').value;
     const password = document.getElementById('signup-password').value;
     const email = document.getElementById('signup-email').value;
+    console.log(`Attempting to signup user: ${username}`);
 
     signupError.classList.add('d-none');
 
+    // Add a visible message for debugging
+    signupError.textContent = 'Sending signup request...';
+    signupError.classList.remove('d-none');
+    signupError.classList.remove('alert-danger');
+    signupError.classList.add('alert-info');
+
+    console.log('Sending signup message to background script');
     chrome.runtime.sendMessage(
       { action: 'signup', username, password, email },
       (response) => {
-        if (response.error) {
+        console.log('Received signup response:', response);
+
+        if (response && response.error) {
+          console.error('Signup error:', response.error);
           signupError.textContent = response.error;
+          signupError.classList.remove('alert-info');
+          signupError.classList.add('alert-danger');
           signupError.classList.remove('d-none');
-        } else {
+        } else if (response && response.success) {
+          console.log('Signup successful');
           // Show success message and switch to login tab
           signupError.textContent = 'Account created successfully! Please log in.';
-          signupError.classList.remove('d-none');
+          signupError.classList.remove('alert-info');
           signupError.classList.remove('alert-danger');
           signupError.classList.add('alert-success');
 
@@ -370,8 +487,16 @@ function setupFormListeners() {
           document.getElementById('signup-password').value = '';
           document.getElementById('signup-email').value = '';
 
-          // Switch to login tab
-          loginTab.click();
+          // Switch to login tab after a short delay
+          setTimeout(() => {
+            loginTab.click();
+          }, 1000);
+        } else {
+          console.error('Unexpected signup response:', response);
+          signupError.textContent = 'Unexpected error. Please try again.';
+          signupError.classList.remove('alert-info');
+          signupError.classList.add('alert-danger');
+          signupError.classList.remove('d-none');
         }
       }
     );
