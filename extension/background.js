@@ -1,5 +1,5 @@
 // API Configuration - point to your backend
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://localhost:8080';
 
 // Handle authentication and API requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -9,21 +9,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ error: error.message }));
     return true; // Required for async response
   }
-  
+
   if (request.action === 'signup') {
     signup(request.username, request.password, request.email)
       .then(response => sendResponse(response))
       .catch(error => sendResponse({ error: error.message }));
     return true;
   }
-  
+
   if (request.action === 'summarize') {
     summarize(request.url, request.maxLength)
       .then(response => sendResponse(response))
       .catch(error => sendResponse({ error: error.message }));
     return true;
   }
-  
+
   if (request.action === 'logout') {
     logout();
     sendResponse({ success: true });
@@ -48,9 +48,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         summarize(response.url)
           .then(summary => {
             // Open popup with the summary
-            chrome.runtime.sendMessage({ 
-              action: 'showSummary', 
-              summary: summary 
+            chrome.runtime.sendMessage({
+              action: 'showSummary',
+              summary: summary
             });
           })
           .catch(error => console.error('Error summarizing:', error));
@@ -70,19 +70,19 @@ async function login(username, password) {
         password
       })
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.detail || 'Login failed');
     }
-    
+
     // Store token in Chrome storage
     chrome.storage.local.set({
       token: data.access_token,
       username: username
     });
-    
+
     return { success: true };
   } catch (error) {
     console.error('Login error:', error);
@@ -101,13 +101,13 @@ async function signup(username, password, email) {
         email: email || undefined
       })
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.detail || 'Signup failed');
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Signup error:', error);
@@ -122,10 +122,10 @@ async function summarize(url, maxLength = 1000) {
     if (!storage.token) {
       throw new Error('You must be logged in to summarize videos');
     }
-    
+
     const response = await fetch(`${API_URL}/summarize`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${storage.token}`
       },
@@ -135,13 +135,13 @@ async function summarize(url, maxLength = 1000) {
         provider_type: 'youtube'
       })
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.detail || 'Summarization failed');
     }
-    
+
     return data;
   } catch (error) {
     console.error('Summarize error:', error);
