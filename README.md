@@ -49,12 +49,12 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
 
 3. Run the backend:
    ```sh
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
    ```
 
 4. Access the API documentation:
-   - Swagger UI: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+   - Swagger UI: http://localhost:8080/docs
+   - ReDoc: http://localhost:8080/redoc
 
 ### Frontend
 
@@ -76,13 +76,13 @@ By default, Summarify uses a local HuggingFace model for summarization. You can 
 1. Set API keys using the API endpoint:
    ```sh
    # For OpenAI
-   curl -X POST http://localhost:8000/api-keys \
+   curl -X POST http://localhost:8080/api-keys \
      -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"provider": "openai", "api_key": "YOUR_OPENAI_API_KEY"}'
 
    # For Anthropic Claude
-   curl -X POST http://localhost:8000/api-keys \
+   curl -X POST http://localhost:8080/api-keys \
      -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"provider": "anthropic", "api_key": "YOUR_ANTHROPIC_API_KEY"}'
