@@ -47,12 +47,18 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
    pip install -r requirements.txt
    ```
 
-3. Run the backend:
+3. Run the database migration script:
+   ```sh
+   python migrate_db.py
+   ```
+   This step is important when upgrading from a previous version to add support for multiple AI models.
+
+4. Run the backend:
    ```sh
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
    ```
 
-4. Access the API documentation:
+5. Access the API documentation:
    - Swagger UI: http://localhost:8080/docs
    - ReDoc: http://localhost:8080/redoc
 
@@ -106,6 +112,85 @@ By default, Summarify uses a local HuggingFace model for summarization. You can 
      }
    }
    ```
+
+### Using OpenAI Models
+
+Once you've configured your OpenAI API key using one of the methods above, you can use OpenAI models for summarization:
+
+1. **Via the API**:
+   ```sh
+   curl -X POST http://localhost:8080/summarize \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "url": "https://www.youtube.com/watch?v=YOUR_VIDEO_ID",
+       "max_length": 500,
+       "provider_type": "youtube",
+       "model_type": "openai",
+       "model_name": "gpt-3.5-turbo"
+     }'
+   ```
+
+   Available OpenAI models include:
+   - `gpt-3.5-turbo` (default)
+   - `gpt-4`
+   - `gpt-4-turbo`
+
+2. **Via the Web UI**:
+   - Log in to the web interface
+   - Enter a YouTube URL
+   - Select "OpenAI" from the model dropdown
+   - Choose a specific model if desired
+   - Click "Summarize"
+
+3. **Via the Chrome Extension**:
+   - Click the Summarify icon
+   - Log in with your credentials
+   - Go to Settings
+   - Select "OpenAI" as your preferred model
+   - Navigate to a YouTube video
+   - Click "Summarize Current Video"
+
+4. **Check Available Models**:
+   You can check which models are available and properly configured:
+   ```sh
+   curl -X GET http://localhost:8080/models \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+   ```
+
+### Using Claude Models
+
+Similarly, once you've configured your Anthropic API key, you can use Claude models for summarization:
+
+1. **Via the API**:
+   ```sh
+   curl -X POST http://localhost:8080/summarize \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "url": "https://www.youtube.com/watch?v=YOUR_VIDEO_ID",
+       "max_length": 500,
+       "provider_type": "youtube",
+       "model_type": "claude",
+       "model_name": "claude-3-haiku-20240307"
+     }'
+   ```
+
+   Available Claude models include:
+   - `claude-3-haiku-20240307` (default, fastest)
+   - `claude-3-sonnet-20240229` (balanced)
+   - `claude-3-opus-20240229` (most capable)
+
+2. **Via the Web UI and Chrome Extension**:
+   - Follow the same steps as for OpenAI models, but select "Claude" instead of "OpenAI"
+
+### Model Comparison
+
+| Model Type | Advantages | Disadvantages | Best For |
+|------------|------------|---------------|----------|
+| **HuggingFace** (Local) | - Free to use<br>- No API key required<br>- Works offline<br>- Privacy (no data sent to third parties) | - Lower quality summaries<br>- Uses local resources<br>- Slower for long videos | - Testing<br>- Privacy-sensitive content<br>- Offline use |
+| **OpenAI** | - High quality summaries<br>- Fast processing<br>- Handles complex content well | - Requires API key<br>- Costs money (pay per use)<br>- Sends data to OpenAI | - Professional summaries<br>- Technical content<br>- When quality is critical |
+| **Claude** | - Excellent at following instructions<br>- Good with nuanced content<br>- Often more detailed | - Requires API key<br>- Costs money (pay per use)<br>- Sends data to Anthropic | - Detailed analysis<br>- Nuanced content<br>- When context preservation is important |
 
 ### Chrome Extension
 
