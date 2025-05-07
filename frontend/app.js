@@ -1,5 +1,5 @@
 // API Configuration
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://localhost:8080';
 
 // DOM Elements
 const authContainer = document.getElementById('auth-container');

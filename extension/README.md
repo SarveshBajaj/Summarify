@@ -36,7 +36,7 @@ The extension will be available on the Chrome Web Store in the future.
 ## Requirements
 
 - A running instance of the Summarify backend API
-- By default, the extension connects to `http://localhost:8000`
+- By default, the extension connects to `http://localhost:8080`
 - To use a different backend URL, modify the `API_URL` in `background.js`
 
 ## Development

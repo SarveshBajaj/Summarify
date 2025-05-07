@@ -12,7 +12,7 @@
   ],
   "host_permissions": [
     "https://*.youtube.com/*",
-    "http://localhost:8000/*"
+    "http://localhost:8080/*"
   ],
   "action": {
     "default_popup": "popup.html",
