@@ -47,12 +47,18 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
    pip install -r requirements.txt
    ```
 
-3. Run the backend:
+3. Run the database migration script:
+   ```sh
+   python migrate_db.py
+   ```
+   This step is important when upgrading from a previous version to add support for multiple AI models.
+
+4. Run the backend:
    ```sh
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
    ```
 
-4. Access the API documentation:
+5. Access the API documentation:
    - Swagger UI: http://localhost:8080/docs
    - ReDoc: http://localhost:8080/redoc
 
