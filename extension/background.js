@@ -18,7 +18,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'summarize') {
-    summarize(request.url, request.maxLength)
+    summarize(request.url, request.maxLength, request.modelType, request.modelName)
+      .then(response => sendResponse(response))
+      .catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'fetchModels') {
+    fetchAvailableModels()
+      .then(response => sendResponse(response))
+      .catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'fetchUserApiKeys') {
+    fetchUserApiKeys()
+      .then(response => sendResponse(response))
+      .catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'setApiKey') {
+    setApiKey(request.provider, request.apiKey)
       .then(response => sendResponse(response))
       .catch(error => sendResponse({ error: error.message }));
     return true;
@@ -115,7 +136,7 @@ async function signup(username, password, email) {
   }
 }
 
-async function summarize(url, maxLength = 1000) {
+async function summarize(url, maxLength = 1000, modelType = 'huggingface', modelName = null) {
   try {
     // Get token from storage
     const storage = await chrome.storage.local.get(['token']);
@@ -132,7 +153,9 @@ async function summarize(url, maxLength = 1000) {
       body: JSON.stringify({
         url,
         max_length: maxLength,
-        provider_type: 'youtube'
+        provider_type: 'youtube',
+        model_type: modelType,
+        model_name: modelName
       })
     });
 
@@ -151,4 +174,91 @@ async function summarize(url, maxLength = 1000) {
 
 function logout() {
   chrome.storage.local.remove(['token', 'username']);
+}
+
+async function fetchAvailableModels() {
+  try {
+    // Get token from storage
+    const storage = await chrome.storage.local.get(['token']);
+    if (!storage.token) {
+      throw new Error('You must be logged in to fetch models');
+    }
+
+    const response = await fetch(`${API_URL}/models`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${storage.token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch available models');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching models:', error);
+    throw error;
+  }
+}
+
+async function fetchUserApiKeys() {
+  try {
+    // Get token from storage
+    const storage = await chrome.storage.local.get(['token']);
+    if (!storage.token) {
+      throw new Error('You must be logged in to fetch API keys');
+    }
+
+    const response = await fetch(`${API_URL}/user/api-keys`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${storage.token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch API keys');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching API keys:', error);
+    throw error;
+  }
+}
+
+async function setApiKey(provider, apiKey) {
+  try {
+    // Get token from storage
+    const storage = await chrome.storage.local.get(['token']);
+    if (!storage.token) {
+      throw new Error('You must be logged in to set API keys');
+    }
+
+    const response = await fetch(`${API_URL}/api-keys`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${storage.token}`
+      },
+      body: JSON.stringify({
+        provider,
+        api_key: apiKey
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to set API key');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error setting ${provider} API key:`, error);
+    throw error;
+  }
 }

@@ -107,3 +107,11 @@ class APIKeyRequest(BaseModel):
         if v not in allowed_providers:
             raise ValueError(f'Provider must be one of: {allowed_providers}')
         return v
+
+class UserAPIKeyResponse(BaseModel):
+    provider: str = Field(..., description="Provider name")
+    has_key: bool = Field(..., description="Whether the user has an API key for this provider")
+    last_updated: Optional[str] = Field(None, description="When the API key was last updated")
+
+class UserAPIKeysResponse(BaseModel):
+    keys: List[UserAPIKeyResponse] = Field(..., description="List of user's API keys")

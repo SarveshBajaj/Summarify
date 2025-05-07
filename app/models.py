@@ -143,9 +143,9 @@ class HuggingFaceModel(SummarizationModel):
 class OpenAIModel(SummarizationModel):
     """OpenAI API-based summarization model"""
 
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, user_id: Optional[int] = None):
         self.model_name = model_name or get_default_model("openai") or "gpt-3.5-turbo"
-        self.api_key = get_api_key("openai")
+        self.api_key = get_api_key("openai", user_id)
 
     def summarize(self, text: str, max_length: int = 1000) -> str:
         """Summarize using OpenAI API"""
@@ -215,9 +215,9 @@ class OpenAIModel(SummarizationModel):
 class ClaudeModel(SummarizationModel):
     """Anthropic Claude API-based summarization model"""
 
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, user_id: Optional[int] = None):
         self.model_name = model_name or get_default_model("claude") or "claude-3-haiku-20240307"
-        self.api_key = get_api_key("anthropic")
+        self.api_key = get_api_key("anthropic", user_id)
 
     def summarize(self, text: str, max_length: int = 1000) -> str:
         """Summarize using Claude API"""
@@ -283,17 +283,17 @@ class ClaudeModel(SummarizationModel):
         """Check if the Claude API key is configured"""
         return self.api_key is not None and len(self.api_key) > 0
 
-def get_model(model_type: ModelType, model_name: Optional[str] = None) -> SummarizationModel:
+def get_model(model_type: ModelType, model_name: Optional[str] = None, user_id: Optional[int] = None) -> SummarizationModel:
     """Factory function to get the appropriate summarization model"""
     if model_type == ModelType.huggingface:
         model_name = model_name or "facebook/bart-large-cnn"
         return HuggingFaceModel(model_name=model_name)
     elif model_type == ModelType.openai:
         model_name = model_name or "gpt-3.5-turbo"
-        return OpenAIModel(model_name=model_name)
+        return OpenAIModel(model_name=model_name, user_id=user_id)
     elif model_type == ModelType.claude:
         model_name = model_name or "claude-3-haiku-20240307"
-        return ClaudeModel(model_name=model_name)
+        return ClaudeModel(model_name=model_name, user_id=user_id)
     else:
         raise NotImplementedError(f"Model type {model_type} not implemented")
 

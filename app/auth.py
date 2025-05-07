@@ -61,7 +61,12 @@ async def get_current_active_user(current_user: str = Depends(get_current_user))
 async def get_current_user_id(current_user: str = Depends(get_current_user)) -> int:
     """Get the current user's ID"""
     user = db_get_user(username=current_user)
-    return user["id"]
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user.get("id", 0)  # Default to 0 if id is not found
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate a user"""

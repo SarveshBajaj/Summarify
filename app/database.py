@@ -149,6 +149,80 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     logger.info(f"User authenticated: {username}")
     return user
 
+# User API key management functions
+def set_user_api_key(user_id: int, provider: str, api_key: str) -> bool:
+    """Set or update API key for a specific user and provider"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if key already exists
+        cursor.execute(
+            "SELECT id FROM user_api_keys WHERE user_id = ? AND provider = ?",
+            (user_id, provider)
+        )
+        existing = cursor.fetchone()
+
+        if existing:
+            # Update existing key
+            cursor.execute(
+                "UPDATE user_api_keys SET api_key = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND provider = ?",
+                (api_key, user_id, provider)
+            )
+        else:
+            # Insert new key
+            cursor.execute(
+                "INSERT INTO user_api_keys (user_id, provider, api_key) VALUES (?, ?, ?)",
+                (user_id, provider, api_key)
+            )
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"API key for {provider} set for user {user_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Error setting user API key: {str(e)}")
+        return False
+
+def get_user_api_key(user_id: int, provider: str) -> Optional[str]:
+    """Get API key for a specific user and provider"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT api_key FROM user_api_keys WHERE user_id = ? AND provider = ?",
+            (user_id, provider)
+        )
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            return result[0]
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user API key: {str(e)}")
+        return None
+
+def get_user_api_keys(user_id: int) -> Dict[str, str]:
+    """Get all API keys for a specific user"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT provider, api_key FROM user_api_keys WHERE user_id = ?",
+            (user_id,)
+        )
+        results = cursor.fetchall()
+        conn.close()
+
+        return {provider: api_key for provider, api_key in results}
+    except Exception as e:
+        logger.error(f"Error getting user API keys: {str(e)}")
+        return {}
+
 # Query tracking functions
 def log_query(
     user_id: int,

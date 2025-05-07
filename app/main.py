@@ -15,7 +15,7 @@ import os
 from .providers import get_provider, ProviderType, ContentProvider
 from .models import ModelType, get_model
 from .config import get_api_key, set_api_key, get_default_model
-from .schemas import SummaryRequest, SummaryResponse, UserCreate, Token, User, QueryRecord, APIKeyRequest
+from .schemas import SummaryRequest, SummaryResponse, UserCreate, Token, User, QueryRecord, APIKeyRequest, UserAPIKeysResponse
 from .auth import (
     authenticate_user, create_access_token, get_current_user,
     get_current_active_user, get_current_user_id, register_user
@@ -134,8 +134,8 @@ async def summarize(
         # Log model selection
         logger.info(f"Using model: {model_type} - {model_name or 'default'}")
 
-        # Get the provider with the specified model
-        provider = get_provider(provider_type, model_type, model_name)
+        # Get the provider with the specified model and user ID for API keys
+        provider = get_provider(provider_type, model_type, model_name, user_id)
 
         # Get transcript
         transcript = provider.get_transcript(req.url)
@@ -213,13 +213,12 @@ async def get_queries_statistics(
     return stats
 
 @app.post("/api-keys")
-async def set_api_key_endpoint(req: APIKeyRequest, current_user: str = Depends(get_current_active_user)):
-    """Set API key for a provider"""
-    # Only allow admin users to set API keys
-    # In a real application, you would check if the user has admin privileges
-    # For simplicity, we'll allow any authenticated user to set API keys
+async def set_api_key_endpoint(req: APIKeyRequest, current_user: str = Depends(get_current_active_user), user_id: int = Depends(get_current_user_id)):
+    """Set API key for a provider for the current user"""
+    # Import here to avoid circular imports
+    from .database import set_user_api_key
 
-    success = set_api_key(req.provider, req.api_key)
+    success = set_user_api_key(user_id, req.provider, req.api_key)
 
     if success:
         return {"status": "success", "message": f"API key for {req.provider} set successfully"}
@@ -229,12 +228,50 @@ async def set_api_key_endpoint(req: APIKeyRequest, current_user: str = Depends(g
             detail=f"Failed to set API key for {req.provider}"
         )
 
+@app.get("/user/api-keys")
+async def get_user_api_keys_endpoint(current_user: str = Depends(get_current_active_user), user_id: int = Depends(get_current_user_id)):
+    """Get API keys for the current user"""
+    # Import here to avoid circular imports
+    from .database import get_user_api_keys, get_db_connection
+
+    # Get user API keys
+    keys = get_user_api_keys(user_id)
+
+    # Get last updated timestamps
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT provider, updated_at FROM user_api_keys WHERE user_id = ?",
+        (user_id,)
+    )
+    timestamps = {provider: updated_at for provider, updated_at in cursor.fetchall()}
+    conn.close()
+
+    # Create response
+    response = []
+    for provider in ['openai', 'anthropic']:
+        response.append({
+            "provider": provider,
+            "has_key": provider in keys,
+            "last_updated": timestamps.get(provider)
+        })
+
+    return {"keys": response}
+
 @app.get("/models")
-async def get_available_models(current_user: str = Depends(get_current_active_user)):
+async def get_available_models(current_user: str = Depends(get_current_active_user), user_id: int = Depends(get_current_user_id)):
     """Get available models and their configuration status"""
-    # Check which models are available
-    openai_configured = get_api_key("openai") is not None
-    claude_configured = get_api_key("anthropic") is not None
+    # Check which models are available globally
+    global_openai_configured = get_api_key("openai") is not None
+    global_claude_configured = get_api_key("anthropic") is not None
+
+    # Check which models are available for the user
+    user_openai_configured = get_api_key("openai", user_id) is not None
+    user_claude_configured = get_api_key("anthropic", user_id) is not None
+
+    # A model is available if it's configured either globally or for the user
+    openai_configured = global_openai_configured or user_openai_configured
+    claude_configured = global_claude_configured or user_claude_configured
 
     return {
         "models": {
@@ -245,12 +282,16 @@ async def get_available_models(current_user: str = Depends(get_current_active_us
             "openai": {
                 "available": openai_configured,
                 "default_model": get_default_model("openai") or "gpt-3.5-turbo",
-                "configured": openai_configured
+                "configured": openai_configured,
+                "user_configured": user_openai_configured,
+                "global_configured": global_openai_configured
             },
             "claude": {
                 "available": claude_configured,
                 "default_model": get_default_model("claude") or "claude-3-haiku-20240307",
-                "configured": claude_configured
+                "configured": claude_configured,
+                "user_configured": user_claude_configured,
+                "global_configured": global_claude_configured
             }
         }
     }

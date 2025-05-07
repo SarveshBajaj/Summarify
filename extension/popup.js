@@ -5,6 +5,7 @@ let usernameDisplay;
 let loginForm;
 let signupForm;
 let logoutBtn;
+let settingsBtn;
 let summarizeForm;
 let resultContainer;
 let loadingIndicator;
@@ -18,6 +19,195 @@ let loginTab;
 let signupTab;
 let copySummaryBtn;
 
+// Settings Modal Elements
+let settingsModal;
+let apiKeysLoading;
+let apiKeysContainer;
+let openaiKeyForm;
+let claudeKeyForm;
+let openaiApiKey;
+let claudeApiKey;
+let openaiStatusBadge;
+let claudeStatusBadge;
+
+// Model selection elements
+let modelTypeSelect;
+let modelNameSelect;
+let modelNameContainer;
+
+// Available models from the server
+let availableModels = {};
+
+// Fetch available models
+function fetchAvailableModels() {
+  chrome.runtime.sendMessage({ action: 'fetchModels' }, (response) => {
+    if (response.error) {
+      console.error('Error fetching models:', response.error);
+    } else {
+      availableModels = response.models || {};
+      updateModelSelectionUI();
+    }
+  });
+}
+
+// Fetch user's API keys
+function fetchUserApiKeys() {
+  apiKeysLoading.classList.remove('d-none');
+  apiKeysContainer.classList.add('d-none');
+
+  chrome.runtime.sendMessage({ action: 'fetchUserApiKeys' }, (response) => {
+    if (response.error) {
+      console.error('Error fetching API keys:', response.error);
+    } else {
+      // Update UI based on API keys
+      response.keys.forEach(key => {
+        if (key.provider === 'openai') {
+          updateApiKeyStatus('openai', key.has_key, key.last_updated);
+        } else if (key.provider === 'anthropic') {
+          updateApiKeyStatus('claude', key.has_key, key.last_updated);
+        }
+      });
+    }
+
+    apiKeysLoading.classList.add('d-none');
+    apiKeysContainer.classList.remove('d-none');
+  });
+}
+
+// Update API key status in UI
+function updateApiKeyStatus(provider, hasKey, lastUpdated) {
+  const badge = provider === 'openai' ? openaiStatusBadge : claudeStatusBadge;
+
+  if (hasKey) {
+    badge.textContent = 'Configured';
+    badge.classList.remove('bg-secondary', 'bg-danger');
+    badge.classList.add('bg-success');
+
+    // Add last updated info if available
+    if (lastUpdated) {
+      const date = new Date(lastUpdated.replace(' ', 'T'));
+      badge.title = `Last updated: ${date.toLocaleString()}`;
+    }
+  } else {
+    badge.textContent = 'Not Configured';
+    badge.classList.remove('bg-success');
+    badge.classList.add('bg-secondary');
+    badge.title = '';
+  }
+}
+
+// Set API key
+async function setApiKey(provider, apiKey) {
+  try {
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { action: 'setApiKey', provider, apiKey },
+        (response) => {
+          if (response.error) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        }
+      );
+    });
+
+    // Refresh available models
+    fetchAvailableModels();
+
+    // Refresh user API keys
+    fetchUserApiKeys();
+
+    return true;
+  } catch (error) {
+    console.error(`Error setting ${provider} API key:`, error);
+    alert(`Error setting API key: ${error.message}`);
+    return false;
+  }
+}
+
+// Update model selection UI
+function updateModelSelectionUI() {
+  // Update the model type dropdown based on what's available
+  for (const option of modelTypeSelect.options) {
+    const modelType = option.value;
+    if (modelType !== 'huggingface') { // HuggingFace is always available locally
+      const isAvailable = availableModels[modelType]?.available;
+      const userConfigured = availableModels[modelType]?.user_configured;
+
+      // Reset the option text to remove any previous annotations
+      if (modelType === 'openai') {
+        option.text = 'OpenAI';
+      } else if (modelType === 'claude') {
+        option.text = 'Claude';
+      }
+
+      option.disabled = !isAvailable;
+
+      if (!isAvailable) {
+        option.text += ' (API key required)';
+      } else if (userConfigured) {
+        option.text += ' (Your key)';
+      }
+    }
+  }
+
+  // Set up the model name dropdown based on the selected model type
+  updateModelNameOptions();
+}
+
+// Update model name options based on selected model type
+function updateModelNameOptions() {
+  const selectedModelType = modelTypeSelect.value;
+
+  // Define model options
+  const modelOptions = {
+    huggingface: [
+      { value: 'facebook/bart-large-cnn', label: 'BART Large CNN (Default)' },
+      { value: 't5-small', label: 'T5 Small (Faster)' }
+    ],
+    openai: [
+      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Default)' },
+      { value: 'gpt-4', label: 'GPT-4 (More Capable)' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' }
+    ],
+    claude: [
+      { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (Default, Fastest)' },
+      { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet (Balanced)' },
+      { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (Most Capable)' }
+    ]
+  };
+
+  // Clear existing options
+  modelNameSelect.innerHTML = '';
+
+  // Get options for the selected model type
+  const options = modelOptions[selectedModelType] || [];
+
+  // Add options to the select element
+  options.forEach(option => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.value;
+    optionElement.textContent = option.label;
+    modelNameSelect.appendChild(optionElement);
+  });
+
+  // Show/hide the model name container based on whether there are options
+  if (options.length > 0) {
+    modelNameContainer.classList.remove('d-none');
+  } else {
+    modelNameContainer.classList.add('d-none');
+  }
+
+  // Show/hide API key warning for non-HuggingFace models
+  if (selectedModelType !== 'huggingface') {
+    const isAvailable = availableModels[selectedModelType]?.available;
+    apiKeyWarning.classList.toggle('d-none', isAvailable);
+  } else {
+    apiKeyWarning.classList.add('d-none');
+  }
+}
+
 // Initialize everything when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded');
@@ -29,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loginForm = document.getElementById('login-form');
   signupForm = document.getElementById('signup-form');
   logoutBtn = document.getElementById('logout-btn');
+  settingsBtn = document.getElementById('settings-btn');
   summarizeForm = document.getElementById('summarize-form');
   resultContainer = document.getElementById('result-container');
   loadingIndicator = document.getElementById('loading');
@@ -41,6 +232,22 @@ document.addEventListener('DOMContentLoaded', () => {
   loginTab = document.getElementById('login-tab');
   signupTab = document.getElementById('signup-tab');
   copySummaryBtn = document.getElementById('copy-summary-btn');
+
+  // Initialize settings modal elements
+  settingsModal = new bootstrap.Modal(document.getElementById('settings-modal'));
+  apiKeysLoading = document.getElementById('api-keys-loading');
+  apiKeysContainer = document.getElementById('api-keys-container');
+  openaiKeyForm = document.getElementById('openai-key-form');
+  claudeKeyForm = document.getElementById('claude-key-form');
+  openaiApiKey = document.getElementById('openai-api-key');
+  claudeApiKey = document.getElementById('claude-api-key');
+  openaiStatusBadge = document.getElementById('openai-status-badge');
+  claudeStatusBadge = document.getElementById('claude-status-badge');
+
+  // Initialize model selection elements
+  modelTypeSelect = document.getElementById('model-type');
+  modelNameSelect = document.getElementById('model-name');
+  modelNameContainer = document.getElementById('model-name-container');
 
   // Initialize Bootstrap tabs manually
   loginTab.addEventListener('click', (e) => {
@@ -77,6 +284,12 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('youtube-url').value = currentUrl;
         }
       });
+
+      // Fetch available models
+      fetchAvailableModels();
+
+      // Fetch user's API keys
+      fetchUserApiKeys();
     } else {
       authContainer.classList.remove('d-none');
       userContainer.classList.add('d-none');
@@ -173,6 +386,43 @@ function setupFormListeners() {
     });
   });
 
+  // Settings button
+  settingsBtn.addEventListener('click', () => {
+    settingsModal.show();
+  });
+
+  // OpenAI API key form
+  openaiKeyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const apiKey = openaiApiKey.value.trim();
+    if (!apiKey) {
+      alert('Please enter a valid API key');
+      return;
+    }
+
+    const success = await setApiKey('openai', apiKey);
+    if (success) {
+      openaiApiKey.value = '';
+      alert('OpenAI API key saved successfully');
+    }
+  });
+
+  // Claude API key form
+  claudeKeyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const apiKey = claudeApiKey.value.trim();
+    if (!apiKey) {
+      alert('Please enter a valid API key');
+      return;
+    }
+
+    const success = await setApiKey('anthropic', apiKey);
+    if (success) {
+      claudeApiKey.value = '';
+      alert('Claude API key saved successfully');
+    }
+  });
+
   // Summarize form
   summarizeForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -222,6 +472,14 @@ function setupFormListeners() {
     }
   });
 
+  // Model type selection change
+  modelTypeSelect.addEventListener('change', () => {
+    updateModelNameOptions();
+  });
+
+  // Initialize model name options
+  updateModelNameOptions();
+
   console.log('All form listeners set up');
 }
 
@@ -232,8 +490,22 @@ function summarizeVideo(url, maxLength) {
   summaryContent.textContent = '';
   metadataDisplay.textContent = '';
 
+  // Get selected model type and name
+  const modelType = modelTypeSelect.value;
+  const modelName = modelNameSelect.value || null;
+
+  // Check if the model is available
+  if (modelType !== 'huggingface') {
+    const isAvailable = availableModels[modelType]?.available;
+    if (!isAvailable) {
+      loadingIndicator.classList.add('d-none');
+      summaryContent.textContent = `Error: ${modelType} API key is required. Please set it in Settings.`;
+      return;
+    }
+  }
+
   chrome.runtime.sendMessage(
-    { action: 'summarize', url, maxLength },
+    { action: 'summarize', url, maxLength, modelType, modelName },
     (response) => {
       loadingIndicator.classList.add('d-none');
 
@@ -258,7 +530,8 @@ function displaySummary(data) {
   metadataDisplay.innerHTML = `
     <small>
       Word count: ${metadata.word_count || 'N/A'} |
-      Processing time: ${metadata.processing_time_seconds || 'N/A'}s
+      Processing time: ${metadata.processing_time_seconds || 'N/A'}s |
+      Model: ${metadata.model_type || 'huggingface'} ${metadata.model_name ? `(${metadata.model_name})` : ''}
       ${metadata.valid === false ? ' | <span class="text-warning">Warning: Summary may not be fully accurate</span>' : ''}
     </small>
   `;

@@ -53,35 +53,48 @@ def save_config(config: Dict[str, Any]) -> bool:
         logger.error(f"Error saving configuration: {str(e)}")
         return False
 
-def get_api_key(provider: str) -> Optional[str]:
-    """Get API key for a specific provider"""
+def get_api_key(provider: str, user_id: Optional[int] = None) -> Optional[str]:
+    """Get API key for a specific provider
+
+    If user_id is provided, try to get user-specific API key first.
+    If not found or user_id is None, fall back to global API key.
+    """
+    # If user_id is provided, try to get user-specific API key
+    if user_id is not None:
+        # Import here to avoid circular imports
+        from .database import get_user_api_key
+        user_key = get_user_api_key(user_id, provider)
+        if user_key:
+            return user_key
+
+    # Fall back to global API key
     config = load_config()
     key = config.get("api_keys", {}).get(provider)
-    
+
     # If key is not in config, check environment variables
     if not key:
         env_var_name = f"{provider.upper()}_API_KEY"
         key = os.environ.get(env_var_name)
-        
+
         # If found in environment, update config
         if key:
             config["api_keys"][provider] = key
             save_config(config)
-    
+
     return key
 
 def set_api_key(provider: str, key: str) -> bool:
     """Set API key for a specific provider"""
     config = load_config()
-    
+
     if "api_keys" not in config:
         config["api_keys"] = {}
-    
+
     config["api_keys"][provider] = key
-    
+
     # Also set environment variable
     os.environ[f"{provider.upper()}_API_KEY"] = key
-    
+
     return save_config(config)
 
 def get_default_model(model_type: str) -> str:
