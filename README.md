@@ -19,6 +19,11 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
 - Comprehensive logging
 - Extensive test coverage (unit and integration tests)
 - Simple frontend UI with query history display
+- Enhanced security:
+  - Encrypted API keys storage
+  - Encrypted passwords with additional salt
+  - User-specific API key management
+  - Secret key for encryption stored separately
 
 ## Requirements
 - Python 3.8+
@@ -53,6 +58,14 @@ Summarify is an extensible API and UI for summarizing YouTube videos (and later,
    ```
    This step is important when upgrading from a previous version to add support for multiple AI models.
 
+4. Set up the configuration file:
+   ```sh
+   # Copy the example config file
+   cp config.json.example config.json
+   ```
+
+   The application will automatically generate a secret key file (`secret_key.key`) on first run. This file is used for encrypting API keys and enhancing password security. **Do not commit this file to version control.**
+
 4. Run the backend:
    ```sh
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
@@ -79,7 +92,13 @@ The frontend is a simple HTML/CSS/JavaScript application located in the `fronten
 
 By default, Summarify uses a local HuggingFace model for summarization. You can also configure it to use OpenAI or Anthropic Claude models:
 
-1. Set API keys using the API endpoint:
+1. **Using the UI (Recommended)**:
+   - Click the "Settings" button in the web interface or Chrome extension
+   - Enter your API keys in the settings modal
+   - API keys are encrypted before being stored in the database
+   - Each user can have their own API keys
+
+2. Set API keys using the API endpoint:
    ```sh
    # For OpenAI
    curl -X POST http://localhost:8080/api-keys \
@@ -94,7 +113,7 @@ By default, Summarify uses a local HuggingFace model for summarization. You can 
      -d '{"provider": "anthropic", "api_key": "YOUR_ANTHROPIC_API_KEY"}'
    ```
 
-2. Alternatively, you can set environment variables:
+3. Alternatively, you can set environment variables (global for all users):
    ```sh
    # For OpenAI
    export OPENAI_API_KEY=your_openai_api_key
@@ -103,7 +122,7 @@ By default, Summarify uses a local HuggingFace model for summarization. You can 
    export ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
 
-3. Or create a `config.json` file in the project root:
+4. Or create a `config.json` file in the project root (global for all users):
    ```json
    {
      "api_keys": {
@@ -112,6 +131,8 @@ By default, Summarify uses a local HuggingFace model for summarization. You can 
      }
    }
    ```
+
+   **Note**: All API keys are encrypted before being stored, whether in the database or config file. The encryption uses a secret key stored in `secret_key.key`, which should not be committed to version control.
 
 ### Using OpenAI Models
 
