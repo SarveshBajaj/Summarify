@@ -8,8 +8,11 @@ import os
 from .schemas import UserCreate, User, TokenData
 from .database import authenticate_user as db_authenticate_user, create_user, get_user as db_get_user
 
-# In production, use environment variables for these
-SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey")
+# Import encryption utilities
+from .encryption import SECRET_KEY as ENCRYPTION_KEY
+
+# Use the encryption key for JWT as well
+SECRET_KEY = os.environ.get("SECRET_KEY", ENCRYPTION_KEY.decode())
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
