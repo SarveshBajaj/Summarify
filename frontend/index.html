@@ -89,6 +89,25 @@
                             <label for="max-length" class="form-label">Max Summary Length (words)</label>
                             <input type="number" class="form-control" id="max-length" value="1000" min="100" max="2000">
                         </div>
+                        <div class="mb-3">
+                            <label for="model-type" class="form-label">AI Model</label>
+                            <select class="form-select" id="model-type">
+                                <option value="huggingface" selected>HuggingFace (Local)</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="claude">Claude</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 d-none" id="model-name-container">
+                            <label for="model-name" class="form-label">Model Version</label>
+                            <select class="form-select" id="model-name">
+                                <!-- Options will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="mb-3 d-none" id="api-key-warning">
+                            <div class="alert alert-warning">
+                                <small>Note: Using this model requires an API key to be configured on the server.</small>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary" id="summarize-btn">Summarize</button>
                     </form>
                 </div>
@@ -130,6 +149,7 @@
                                         <th>Date</th>
                                         <th>URL</th>
                                         <th>Provider</th>
+                                        <th>Model</th>
                                         <th>Length</th>
                                         <th>Valid</th>
                                         <th>Time (s)</th>
