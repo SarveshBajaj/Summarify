@@ -26,4 +26,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LLM_API_KEY: ${{ secrets.OPENAI_KEY }}
-          LLM_MODEL: "gpt-4-turbo"
+          LLM_MODEL: "gpt-4"
