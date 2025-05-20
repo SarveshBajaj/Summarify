@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review, review_requested]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   qodo-pr-agent:
     runs-on: ubuntu-latest
