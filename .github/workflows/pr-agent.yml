@@ -1,0 +1,23 @@
+name: Qodo PR Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, review_requested]
+
+jobs:
+  qodo-pr-agent:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      github_action_config.auto_review: "true"
+      github_action_config.auto_describe: "true"
+      github_action_config.auto_improve: "true"
+      github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "review_requested"]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Qodo PR Agent
+        uses: qodo-ai/pr-agent@v1.0.8
