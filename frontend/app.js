@@ -8,6 +8,7 @@ const usernameDisplay = document.getElementById('username-display');
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 const logoutBtn = document.getElementById('logout-btn');
+const settingsBtn = document.getElementById('settings-btn');
 const summarizeForm = document.getElementById('summarize-form');
 const resultContainer = document.getElementById('result-container');
 const loadingIndicator = document.getElementById('loading');
@@ -19,6 +20,42 @@ const refreshQueriesBtn = document.getElementById('refresh-queries-btn');
 const queriesLoading = document.getElementById('queries-loading');
 const queriesTableBody = document.getElementById('queries-table-body');
 const noQueriesMessage = document.getElementById('no-queries-message');
+const modelTypeSelect = document.getElementById('model-type');
+const modelNameSelect = document.getElementById('model-name');
+const modelNameContainer = document.getElementById('model-name-container');
+const apiKeyWarning = document.getElementById('api-key-warning');
+
+// Settings Modal Elements
+const settingsModal = new bootstrap.Modal(document.getElementById('settings-modal'));
+const apiKeysLoading = document.getElementById('api-keys-loading');
+const apiKeysContainer = document.getElementById('api-keys-container');
+const openaiKeyForm = document.getElementById('openai-key-form');
+const claudeKeyForm = document.getElementById('claude-key-form');
+const openaiApiKey = document.getElementById('openai-api-key');
+const claudeApiKey = document.getElementById('claude-api-key');
+const openaiStatusBadge = document.getElementById('openai-status-badge');
+const claudeStatusBadge = document.getElementById('claude-status-badge');
+
+// Model configuration
+const modelOptions = {
+    huggingface: [
+        { value: 'facebook/bart-large-cnn', label: 'BART Large CNN (Default)' },
+        { value: 't5-small', label: 'T5 Small (Faster)' }
+    ],
+    openai: [
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Default)' },
+        { value: 'gpt-4', label: 'GPT-4 (More Capable)' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' }
+    ],
+    claude: [
+        { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (Default, Fastest)' },
+        { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet (Balanced)' },
+        { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (Most Capable)' }
+    ]
+};
+
+// Available models from the server
+let availableModels = {};
 
 // Auth state
 let token = localStorage.getItem('token');
@@ -33,11 +70,171 @@ function checkAuth() {
 
         // Load user's queries
         fetchUserQueries();
+
+        // Fetch available models
+        fetchAvailableModels();
+
+        // Fetch user's API keys
+        fetchUserApiKeys();
     } else {
         authContainer.classList.remove('d-none');
         userContainer.classList.add('d-none');
         resultContainer.classList.add('d-none');
     }
+}
+
+// Fetch user's API keys
+async function fetchUserApiKeys() {
+    try {
+        apiKeysLoading.classList.remove('d-none');
+        apiKeysContainer.classList.add('d-none');
+
+        const response = await fetch(`${API_URL}/user/api-keys`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch API keys');
+        }
+
+        const data = await response.json();
+
+        // Update UI based on API keys
+        data.keys.forEach(key => {
+            if (key.provider === 'openai') {
+                updateApiKeyStatus('openai', key.has_key, key.last_updated);
+            } else if (key.provider === 'anthropic') {
+                updateApiKeyStatus('claude', key.has_key, key.last_updated);
+            }
+        });
+
+        apiKeysLoading.classList.add('d-none');
+        apiKeysContainer.classList.remove('d-none');
+    } catch (error) {
+        console.error('Error fetching API keys:', error);
+        apiKeysLoading.classList.add('d-none');
+        apiKeysContainer.classList.remove('d-none');
+    }
+}
+
+// Update API key status in UI
+function updateApiKeyStatus(provider, hasKey, lastUpdated) {
+    const badge = provider === 'openai' ? openaiStatusBadge : claudeStatusBadge;
+
+    if (hasKey) {
+        badge.textContent = 'Configured';
+        badge.classList.remove('bg-secondary', 'bg-danger');
+        badge.classList.add('bg-success');
+
+        // Add last updated info if available
+        if (lastUpdated) {
+            const date = new Date(lastUpdated.replace(' ', 'T'));
+            badge.title = `Last updated: ${date.toLocaleString()}`;
+        }
+    } else {
+        badge.textContent = 'Not Configured';
+        badge.classList.remove('bg-success');
+        badge.classList.add('bg-secondary');
+        badge.title = '';
+    }
+}
+
+// Set API key
+async function setApiKey(provider, apiKey) {
+    try {
+        const response = await fetch(`${API_URL}/api-keys`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                provider,
+                api_key: apiKey
+            })
+        });
+
+        if (!response.ok) {
+            let errorMessage = 'Failed to set API key';
+            try {
+                const error = await response.json();
+                errorMessage = error.detail || errorMessage;
+            } catch (e) {
+                // If response is not JSON
+            }
+            throw new Error(errorMessage);
+        }
+
+        // Refresh available models
+        fetchAvailableModels();
+
+        // Refresh user API keys
+        fetchUserApiKeys();
+
+        return true;
+    } catch (error) {
+        console.error(`Error setting ${provider} API key:`, error);
+        alert(`Error setting API key: ${error.message}`);
+        return false;
+    }
+}
+
+// Fetch available models from the server
+async function fetchAvailableModels() {
+    try {
+        const response = await fetch(`${API_URL}/models`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to fetch available models');
+            return;
+        }
+
+        const data = await response.json();
+        availableModels = data.models || {};
+
+        // Update the model selection UI
+        updateModelSelectionUI();
+    } catch (error) {
+        console.error('Error fetching available models:', error);
+    }
+}
+
+// Update the model selection UI based on available models
+function updateModelSelectionUI() {
+    // Update the model type dropdown based on what's available
+    for (const option of modelTypeSelect.options) {
+        const modelType = option.value;
+        if (modelType !== 'huggingface') { // HuggingFace is always available locally
+            const isAvailable = availableModels[modelType]?.available;
+            const userConfigured = availableModels[modelType]?.user_configured;
+
+            // Reset the option text to remove any previous annotations
+            if (modelType === 'openai') {
+                option.text = 'OpenAI';
+            } else if (modelType === 'claude') {
+                option.text = 'Claude';
+            }
+
+            option.disabled = !isAvailable;
+
+            if (!isAvailable) {
+                option.text += ' (API key required)';
+            } else if (userConfigured) {
+                option.text += ' (Your key)';
+            }
+        }
+    }
+
+    // Set up the model name dropdown based on the selected model type
+    updateModelNameOptions();
 }
 
 // API Calls
@@ -117,12 +314,50 @@ async function signup(username, password, email = null) {
     }
 }
 
+// Update model name options based on selected model type
+function updateModelNameOptions() {
+    const selectedModelType = modelTypeSelect.value;
+
+    // Clear existing options
+    modelNameSelect.innerHTML = '';
+
+    // Get options for the selected model type
+    const options = modelOptions[selectedModelType] || [];
+
+    // Add options to the select element
+    options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.label;
+        modelNameSelect.appendChild(optionElement);
+    });
+
+    // Show/hide the model name container based on whether there are options
+    if (options.length > 0) {
+        modelNameContainer.classList.remove('d-none');
+    } else {
+        modelNameContainer.classList.add('d-none');
+    }
+
+    // Show/hide API key warning for non-HuggingFace models
+    if (selectedModelType !== 'huggingface') {
+        const isAvailable = availableModels[selectedModelType]?.available;
+        apiKeyWarning.classList.toggle('d-none', isAvailable);
+    } else {
+        apiKeyWarning.classList.add('d-none');
+    }
+}
+
 async function summarize(url, maxLength = 1000) {
     try {
         resultContainer.classList.remove('d-none');
         loadingIndicator.classList.remove('d-none');
         summaryContent.innerHTML = '';
         metadataDisplay.innerHTML = '';
+
+        // Get selected model type and name
+        const modelType = modelTypeSelect.value;
+        const modelName = modelNameSelect.value || null;
 
         const response = await fetch(`${API_URL}/summarize`, {
             method: 'POST',
@@ -132,7 +367,10 @@ async function summarize(url, maxLength = 1000) {
             },
             body: JSON.stringify({
                 url,
-                max_length: maxLength
+                max_length: maxLength,
+                provider_type: 'youtube',
+                model_type: modelType,
+                model_name: modelName
             })
         });
 
@@ -164,6 +402,7 @@ async function summarize(url, maxLength = 1000) {
                 <div>Word count: ${data.metadata.word_count}</div>
                 <div>Processing time: ${data.metadata.processing_time_seconds}s</div>
                 <div>Source type: ${data.metadata.source_type}</div>
+                <div>Model: ${data.metadata.model_type || 'huggingface'} (${data.metadata.model_name || 'default'})</div>
                 <div>Validation: <span class="${validationClass}">${data.valid ? 'Passed' : 'Warning'}</span></div>
                 ${!data.valid ? `<div class="${validationClass} small mt-1">${validationMessage}</div>` : ''}
             `;
@@ -222,6 +461,7 @@ async function fetchUserQueries() {
                 <td>${formattedDate}</td>
                 <td><a href="${query.url}" target="_blank" title="${query.url}">${displayUrl}</a></td>
                 <td>${query.provider_type}</td>
+                <td>${query.model_type || 'huggingface'}</td>
                 <td>${query.summary_length}</td>
                 <td><span class="${query.valid ? 'text-success' : 'text-warning'}">${query.valid ? 'Yes' : 'No'}</span></td>
                 <td>${query.processing_time.toFixed(2)}</td>
@@ -243,6 +483,48 @@ loginForm.addEventListener('submit', (e) => {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
     login(username, password);
+});
+
+// Model type selection change
+modelTypeSelect.addEventListener('change', () => {
+    updateModelNameOptions();
+});
+
+// Settings button
+settingsBtn.addEventListener('click', () => {
+    settingsModal.show();
+});
+
+// OpenAI API key form
+openaiKeyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const apiKey = openaiApiKey.value.trim();
+    if (!apiKey) {
+        alert('Please enter a valid API key');
+        return;
+    }
+
+    const success = await setApiKey('openai', apiKey);
+    if (success) {
+        openaiApiKey.value = '';
+        alert('OpenAI API key saved successfully');
+    }
+});
+
+// Claude API key form
+claudeKeyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const apiKey = claudeApiKey.value.trim();
+    if (!apiKey) {
+        alert('Please enter a valid API key');
+        return;
+    }
+
+    const success = await setApiKey('anthropic', apiKey);
+    if (success) {
+        claudeApiKey.value = '';
+        alert('Claude API key saved successfully');
+    }
 });
 
 signupForm.addEventListener('submit', (e) => {

@@ -1,6 +1,6 @@
 {
     "api_keys": {
-        "openai": "test-key",
+        "openai": "",
         "anthropic": ""
     },
     "models": {

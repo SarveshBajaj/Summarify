@@ -8,8 +8,11 @@ import os
 from .schemas import UserCreate, User, TokenData
 from .database import authenticate_user as db_authenticate_user, create_user, get_user as db_get_user
 
-# In production, use environment variables for these
-SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey")
+# Import encryption utilities
+from .encryption import SECRET_KEY as ENCRYPTION_KEY
+
+# Use the encryption key for JWT as well
+SECRET_KEY = os.environ.get("SECRET_KEY", ENCRYPTION_KEY.decode())
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -61,7 +64,12 @@ async def get_current_active_user(current_user: str = Depends(get_current_user))
 async def get_current_user_id(current_user: str = Depends(get_current_user)) -> int:
     """Get the current user's ID"""
     user = db_get_user(username=current_user)
-    return user["id"]
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user.get("id", 0)  # Default to 0 if id is not found
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate a user"""

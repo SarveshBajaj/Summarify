@@ -18,10 +18,11 @@ class ProviderType(str, Enum):
 class ContentProvider(ABC):
     """Base abstract class for all content providers"""
 
-    def __init__(self, model_type: ModelType = ModelType.huggingface, model_name: Optional[str] = None):
+    def __init__(self, model_type: ModelType = ModelType.huggingface, model_name: Optional[str] = None, user_id: Optional[int] = None):
         """Initialize the content provider with a specific model"""
         self.model_type = model_type
         self.model_name = model_name
+        self.user_id = user_id
         self._model = None
 
     @abstractmethod
@@ -34,16 +35,16 @@ class ContentProvider(ABC):
         try:
             # Get the appropriate model
             model = self._get_model()
-            
+
             # Clean the transcript before summarization
             transcript = self._clean_transcript(transcript)
-            
+
             # Generate the summary
             summary = model.summarize(transcript, max_length=max_length)
-            
+
             # Validate the summary
             is_valid = self._validate_summary(summary, transcript)
-            
+
             return summary, is_valid
         except Exception as e:
             logger.error(f"Error in summarization: {str(e)}")
@@ -52,8 +53,8 @@ class ContentProvider(ABC):
     def _get_model(self) -> SummarizationModel:
         """Get the summarization model"""
         if self._model is None:
-            logger.info(f"Initializing {self.model_type} model: {self.model_name or 'default'}")
-            self._model = get_model(self.model_type, self.model_name)
+            logger.info(f"Initializing {self.model_type} model: {self.model_name or 'default'} for user {self.user_id or 'global'}")
+            self._model = get_model(self.model_type, self.model_name, self.user_id)
         return self._model
 
     def _clean_transcript(self, transcript: str) -> str:
@@ -81,7 +82,7 @@ class ContentProvider(ABC):
         # Extract important words from transcript
         summary_lower = summary.lower()
         transcript_lower = transcript.lower()
-        
+
         # Extract important words from transcript
         words = transcript_lower.split()
         word_freq = {}
@@ -132,15 +133,15 @@ class ContentProvider(ABC):
 
         return is_valid
 
-def get_provider(provider_type: ProviderType, model_type: ModelType = ModelType.huggingface, model_name: Optional[str] = None) -> ContentProvider:
+def get_provider(provider_type: ProviderType, model_type: ModelType = ModelType.huggingface, model_name: Optional[str] = None, user_id: Optional[int] = None) -> ContentProvider:
     """Factory function to get the appropriate content provider with the specified model"""
     if provider_type == ProviderType.youtube:
-        return YouTubeProvider(model_type=model_type, model_name=model_name)
+        return YouTubeProvider(model_type=model_type, model_name=model_name, user_id=user_id)
     # Add more providers here as they are implemented
     # if provider_type == ProviderType.web:
-    #     return WebProvider(model_type=model_type, model_name=model_name)
+    #     return WebProvider(model_type=model_type, model_name=model_name, user_id=user_id)
     # if provider_type == ProviderType.pdf:
-    #     return PDFProvider(model_type=model_type, model_name=model_name)
+    #     return PDFProvider(model_type=model_type, model_name=model_name, user_id=user_id)
     raise NotImplementedError(f"Provider type {provider_type} not implemented")
 
 class YouTubeProvider(ContentProvider):
@@ -167,10 +168,10 @@ class YouTubeProvider(ContentProvider):
             r'(?:embed\/)([0-9A-Za-z_-]{11})',   # Embedded URLs
             r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})'  # Shortened URLs
         ]
-        
+
         for pattern in patterns:
             match = re.search(pattern, url)
             if match:
                 return match.group(1)
-        
+
         raise ValueError(f"Could not extract YouTube video ID from URL: {url}")

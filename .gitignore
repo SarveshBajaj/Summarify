@@ -44,6 +44,11 @@ logs/
 .env.test.local
 .env.production.local
 
+# Security
+secret_key.key
+*.key
+config.json
+
 # Testing
 .coverage
 htmlcov/
