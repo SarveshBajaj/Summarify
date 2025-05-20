@@ -7,7 +7,7 @@ permissions:
 
 on:
   pull_request_target:
-    types: [opened, synchronize]
+    types: [opened, reopened, ready_for_review, review_requested, synchronize]
   pull_request_review_comment:
     types: [created]
 
